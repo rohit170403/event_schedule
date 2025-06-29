@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}All Events - Event Scheduler{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+    <h2>All Events</h2>
+    <div style="color: #667eea; font-weight: 600;">
+        Current time: <span id="current-time"></span>
+    </div>
+</div>
+
+{% if events %}
+    <div class="events-list">
+        {% for event in events %}
+            <div class="event-card">
+                <div class="event-title">
+                    {{ event.title }}
+                    {% if event.is_recurring %}
+                        <span style="background: #667eea; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7em; margin-left: 10px;">
+                            {{ event.recurrence_type.upper() }}
+                        </span>
+                    {% endif %}
+                </div>
+                <div class="event-time">
+                    <strong>Start:</strong> {{ event.start_time.strftime('%Y-%m-%d %H:%M') }} |
+                    <strong>End:</strong> {{ event.end_time.strftime('%Y-%m-%d %H:%M') }}
+                </div>
+                {% if event.description %}
+                    <div class="event-description">
+                        {{ event.description }}
+                    </div>
+                {% endif %}
+                {% if event.is_recurring and event.recurrence_end %}
+                    <div style="color: #6c757d; font-size: 0.9em; margin-bottom: 10px;">
+                        <strong>Recurring until:</strong> {{ event.recurrence_end.strftime('%Y-%m-%d') }}
+                    </div>
+                {% endif %}
+                <div class="event-actions">
+                    <a href="{{ url_for('edit_event', event_id=event.id) }}" class="btn btn-secondary">Edit</a>
+                    <a href="{{ url_for('delete_event', event_id=event.id) }}" 
+                       class="btn btn-danger" 
+                       onclick="return confirm('Are you sure you want to delete this event?')">Delete</a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div style="text-align: center; padding: 60px; color: #6c757d;">
+        <h3>No events found</h3>
+        <p>Create your first event to get started!</p>
+        <a href="{{ url_for('add_event') }}" class="btn" style="margin-top: 20px;">Add Your First Event</a>
+    </div>
+{% endif %}
+
+<script>
+    // Check for upcoming events and show browser notifications
+    document.addEventListener('DOMContentLoaded', function() {
+        // Request notification permission
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        // Check for events starting soon
+        const events = {{ events_json | tojson | safe }};
+
+        const now = new Date();
+        const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+
+        events.forEach(event => {
+            const eventStart = new Date(event.start_time);
+            if (eventStart > now && eventStart <= oneHourFromNow) {
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    const notification = new Notification(`Upcoming Event: ${event.title}`, {
+                        body: `Starting at ${eventStart.toLocaleTimeString()}`,
+                        icon: '/static/calendar-icon.png' // You can add an icon
+                    });
+                    
+                    notification.onclick = function() {
+                        window.focus();
+                        notification.close();
+                    };
+                }
+            }
+        });
+    });
+
+    // Highlight events starting soon
+    function highlightUpcomingEvents() {
+        const eventCards = document.querySelectorAll('.event-card');
+        const now = new Date();
+        const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+
+        eventCards.forEach(card => {
+            const timeElement = card.querySelector('.event-time');
+            if (timeElement) {
+                const timeText = timeElement.textContent;
+                const startTimeMatch = timeText.match(/Start: (\d{4}-\d{2}-\d{2} \d{2}:\d{2})/);
+                if (startTimeMatch) {
+                    const eventStart = new Date(startTimeMatch[1]);
+                    if (eventStart > now && eventStart <= oneHourFromNow) {
+                        card.style.borderLeft = '5px solid #ff6b6b';
+                        card.style.background = 'linear-gradient(135deg, #fff 0%, #fff5f5 100%)';
+                        
+                        // Add "Starting Soon" badge
+                        if (!card.querySelector('.starting-soon-badge')) {
+                            const badge = document.createElement('div');
+                            badge.className = 'starting-soon-badge';
+                            badge.innerHTML = '<span style="background: #ff6b6b; color: white; padding: 4px 12px; border-radius: 15px; font-size: 0.8em; font-weight: 600;">Starting Soon!</span>';
+                            card.querySelector('.event-title').appendChild(badge);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Run highlighting on page load and every minute
+    highlightUpcomingEvents();
+    setInterval(highlightUpcomingEvents, 60000);
+</script>
+{% endblock %}

@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Event - Event Scheduler{% endblock %}
+
+{% block content %}
+<h2>Edit Event</h2>
+
+<form method="POST" onsubmit="return validateEventForm()" style="max-width: 600px;">
+    <div class="form-group">
+        <label for="title">Event Title *</label>
+        <input type="text" id="title" name="title" value="{{ event.title }}" required placeholder="Enter event title">
+    </div>
+
+    <div class="form-group">
+        <label for="description">Description</label>
+        <textarea id="description" name="description" placeholder="Enter event description (optional)">{{ event.description or '' }}</textarea>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div class="form-group">
+            <label for="start_time">Start Date & Time *</label>
+            <input type="datetime-local" id="start_time" name="start_time" 
+                   value="{{ event.start_time.strftime('%Y-%m-%dT%H:%M') }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="end_time">End Date & Time *</label>
+            <input type="datetime-local" id="end_time" name="end_time" 
+                   value="{{ event.end_time.strftime('%Y-%m-%dT%H:%M') }}" required>
+        </div>
+    </div>
+
+    <div class="checkbox-group">
+        <input type="checkbox" id="is_recurring" name="is_recurring" 
+               {% if event.is_recurring %}checked{% endif %} onchange="toggleRecurring()">
+        <label for="is_recurring">Make this a recurring event</label>
+    </div>
+
+    <div id="recurring-options" class="recurring-options" 
+         style="display: {% if event.is_recurring %}block{% else %}none{% endif %};">
+        <h4 style="margin-bottom: 15px; color: #555;">Recurring Event Options</h4>
+        
+        <div class="form-group">
+            <label for="recurrence_type">Recurrence Pattern</label>
+            <select id="recurrence_type" name="recurrence_type">
+                <option value="">Select pattern</option>
+                <option value="daily" {% if event.recurrence_type == 'daily' %}selected{% endif %}>Daily</option>
+                <option value="weekly" {% if event.recurrence_type == 'weekly' %}selected{% endif %}>Weekly</option>
+                <option value="monthly" {% if event.recurrence_type == 'monthly' %}selected{% endif %}>Monthly</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="recurrence_end">End Recurrence Date (optional)</label>
+            <input type="date" id="recurrence_end" name="recurrence_end" 
+                   value="{% if event.recurrence_end %}{{ event.recurrence_end.strftime('%Y-%m-%d') }}{% endif %}"
+                   placeholder="Leave empty for no end date">
+        </div>
+    </div>
+
+    <div style="margin-top: 30px;">
+        <button type="submit" class="btn">Update Event</button>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+        <a href="{{ url_for('delete_event', event_id=event.id) }}" 
+           class="btn btn-danger" 
+           onclick="return confirm('Are you sure you want to delete this event?')" 
+           style="float: right;">Delete Event</a>
+    </div>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Update end time minimum when start time changes
+        document.getElementById('start_time').addEventListener('change', function() {
+            const startTime = this.value;
+            document.getElementById('end_time').min = startTime;
+            
+            // If end time is before start time, update end time
+            const endTimeElement = document.getElementById('end_time');
+            if (endTimeElement.value && endTimeElement.value <= startTime) {
+                const startDate = new Date(startTime);
+                const newEndDate = new Date(startDate.getTime() + 60 * 60 * 1000); // Add 1 hour
+                endTimeElement.value = newEndDate.toISOString().slice(0, 16);
+            }
+        });
+
+        // Set initial minimum for end time
+        const startTime = document.getElementById('start_time').value;
+        if (startTime) {
+            document.getElementById('end_time').min = startTime;
+        }
+    });
+
+    // Enhanced form validation
+    function validateEventForm() {
+        const title = document.getElementById('title').value.trim();
+        const startTime = document.getElementById('start_time').value;
+        const endTime = document.getElementById('end_time').value;
+        const isRecurring = document.getElementById('is_recurring').checked;
+        const recurrenceType = document.getElementById('recurrence_type').value;
+
+        // Check if title is provided
+        if (!title) {
+            alert('Please enter an event title');
+            document.getElementById('title').focus();
+            return false;
+        }
+
+        // Check if times are provided
+        if (!startTime || !endTime) {
+            alert('Please provide both start and end times');
+            return false;
+        }
+
+        // Check if end time is after start time
+        const startDate = new Date(startTime);
+        const endDate = new Date(endTime);
+        
+        if (endDate <= startDate) {
+            alert('End time must be after start time');
+            document.getElementById('end_time').focus();
+            return false;
+        }
+
+        // Check recurring event validation
+        if (isRecurring && !recurrenceType) {
+            alert('Please select a recurrence pattern for recurring events');
+            document.getElementById('recurrence_type').focus();
+            return false;
+        }
+
+        return true;
+    }
+
+    // Auto-focus first input
+    document.getElementById('title').focus();
+    document.getElementById('title').select();
+</script>
+{% endblock %}
