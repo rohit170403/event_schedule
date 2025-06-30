@@ -21,6 +21,7 @@ A full-featured Flask web application for scheduling events, managing recurring 
 - Simple UI with form-based event creation
 
 ---
+- Email notification feature added but not working now due to short time period 
 
 ## 📦 Dependencies
 
