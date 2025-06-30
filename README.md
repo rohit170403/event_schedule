@@ -2,7 +2,7 @@ To run open new terminal and run this commands
 1) pip install -r requirements.txt
 2) python app.py
 
-
+# Hosted website on : - https://rohitp170403.pythonanywhere.com/
 
 # 🗓️ Flask Event Scheduler App
 
